@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -276,19 +277,23 @@ public class MilvusMemoryStore : IMemoryStore, IDisposable
         IEnumerable<MemoryRecord> records,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        StringBuilder idString = new();
+        // Pre-allocate StringBuilder and Lists to reduce allocations
+        var recordsList = records.ToList();  // Materialize to know count
+        int recordCount = recordsList.Count;
 
-        List<bool> isReferenceData = [];
-        List<string> externalSourceNameData = [];
-        List<string> idData = [];
-        List<string> descriptionData = [];
-        List<string> textData = [];
-        List<string> additionalMetadataData = [];
-        List<ReadOnlyMemory<float>> embeddingData = [];
-        List<string> keyData = [];
-        List<string> timestampData = [];
+        StringBuilder idString = new(recordCount * 50);  // Estimate: ~50 chars per ID
 
-        foreach (MemoryRecord record in records)
+        List<bool> isReferenceData = new(recordCount);
+        List<string> externalSourceNameData = new(recordCount);
+        List<string> idData = new(recordCount);
+        List<string> descriptionData = new(recordCount);
+        List<string> textData = new(recordCount);
+        List<string> additionalMetadataData = new(recordCount);
+        List<ReadOnlyMemory<float>> embeddingData = new(recordCount);
+        List<string> keyData = new(recordCount);
+        List<string> timestampData = new(recordCount);
+
+        foreach (MemoryRecord record in recordsList)
         {
             var metadata = record.Metadata;
 
